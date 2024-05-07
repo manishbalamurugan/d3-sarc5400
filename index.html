@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Interactive Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        #map { height: 90vh; width: 85vw }
+    </style>
+</head>
+<body>
+    <div style="position: absolute; top: 20px; right: 20px; z-index: 1000; background: white; padding: 10px;">
+        <h4>Filters</h4>
+        <div style="padding-bottom: 10px; align-items: end;">
+            <label for="category-select">Category:</label>
+            <select id="category-select">
+                <option value="all">All</option>
+                <option value="software">Software</option>
+                <option value="web">Web</option>
+                <option value="mobile">Mobile</option>
+                <option value="enterprise">Enterprise</option>
+                <option value="advertising">Advertising</option>
+                <option value="gamesvideo">Games/Video</option>
+                <option value="ecommerce">E-commerce</option>
+                <option value="biotech">Biotech</option>
+                <option value="consulting">Consulting</option>
+                <option value="othercategory">Other</option>
+            </select>
+        </div>
+        <div style="padding-bottom: 10px; justify-self: end;">
+            <label for="status-select">Status:</label>
+            <select id="status-select">
+                <option value="all">All</option>
+                <option value="acquired">Acquired</option>
+                <option value="closed">Closed</option>
+            </select>
+        </div>
+    <div style="padding-bottom: 10px;">
+        <h4>Color Legend</h4>
+        <div id="color-legend" style="display: flex; flex-direction: column;">
+            <div><span style="height: 10px; width: 10px; background-color: #1f77b4; display: inline-block;"></span> Software</div>
+            <div><span style="height: 10px; width: 10px; background-color: #ff7f0e; display: inline-block;"></span> Web</div>
+            <div><span style="height: 10px; width: 10px; background-color: #2ca02c; display: inline-block;"></span> Mobile</div>
+            <div><span style="height: 10px; width: 10px; background-color: #d62728; display: inline-block;"></span> Enterprise</div>
+            <div><span style="height: 10px; width: 10px; background-color: #9467bd; display: inline-block;"></span> Advertising</div>
+            <div><span style="height: 10px; width: 10px; background-color: #8c564b; display: inline-block;"></span> Games/Video</div>
+            <div><span style="height: 10px; width: 10px; background-color: #e377c2; display: inline-block;"></span> E-commerce</div>
+            <div><span style="height: 10px; width: 10px; background-color: #7f7f7f; display: inline-block;"></span> Biotech</div>
+            <div><span style="height: 10px; width: 10px; background-color: #bcbd22; display: inline-block;"></span> Consulting</div>
+            <div><span style="height: 10px; width: 10px; background-color: #17becf; display: inline-block;"></span> Other</div>
+        </div>
+        <div style="padding-bottom: 10px;">
+            <h4>Status Legend</h4>
+            <div style="display: flex; flex-direction: column;">
+                <div><span style="height: 10px; width: 10px; border: 2px solid red; display: inline-block;"></span> Closed</div>
+                <div><span style="height: 10px; width: 10px; border: 2px solid green; display: inline-block;"></span> Acquired</div>
+            </div>
+        </div>
+    </div>
+    </div>
+    <div id="map"></div>
+    <script>
+        var map = L.map('map').setView([39.8283, -98.5795], 5);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18
+        }).addTo(map);
+    
+        var allMarkers = [];
+    
+        function addMarkers(data) {
+            data.forEach(function(d) {
+                var fundingScale = Math.sqrt(d.funding_total_usd) / 2000;
+                var marker = L.circleMarker([d.latitude, d.longitude], {
+                    radius: fundingScale < 5 ? 5 : fundingScale,
+                    fillColor: getCategoryColor(d.category),
+                    color: d.status === 'closed' ? 'red' : 'green',
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                }).addTo(map);
+                marker.bindPopup("<b>" + d.name + "</b><br>Status: " + d.status + "<br>Funding Total: $" + d.funding_total_usd.toLocaleString() + "<br>Category: " + d.category);
+                allMarkers.push({ marker: marker, data: d });
+            });
+        }
+    
+        function getCategoryColor(category) {
+            var colors = {
+                'software': '#1f77b4', 'web': '#ff7f0e', 'mobile': '#2ca02c',
+                'enterprise': '#d62728', 'advertising': '#9467bd', 'gamesvideo': '#8c564b',
+                'ecommerce': '#e377c2', 'biotech': '#7f7f7f', 'consulting': '#bcbd22',
+                'othercategory': '#17becf', 'default': '#dddddd'
+            };
+            return colors[category] || colors['default'];
+        }
+    
+        function filterMarkers() {
+            var selectedCategory = document.getElementById('category-select').value;
+            var selectedStatus = document.getElementById('status-select').value;
+            allMarkers.forEach(function(m) {
+                var match = (selectedCategory === 'all' || m.data.category === selectedCategory) &&
+                            (selectedStatus === 'all' || m.data.status === selectedStatus);
+                if (match) {
+                    m.marker.addTo(map);
+                } else {
+                    map.removeLayer(m.marker);
+                }
+            });
+        }
+    
+        document.getElementById('category-select').addEventListener('change', filterMarkers);
+        document.getElementById('status-select').addEventListener('change', filterMarkers);
+    
+        d3.json('data.json').then(function(data) {
+            addMarkers(data);
+        });
+    </script>
+</body>
+</html>
